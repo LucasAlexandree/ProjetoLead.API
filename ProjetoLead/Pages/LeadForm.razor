@@ -1,0 +1,141 @@
+﻿@page "/lead/{Id:int?}"
+@inject LeadService LeadService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime js
+
+
+<h2 class="titulo">Cadastro de Leads</h2>
+
+<EditForm Model="lead" OnValidSubmit="SalvarLead">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-container">
+        <div class="form-group">
+            <label>CNPJ:</label>
+            <InputText @bind-Value="lead.Cnpj" class="form-input" />
+            <ValidationMessage For="@(() => lead.Cnpj)" />
+        </div>
+
+        <div class="form-group">
+            <label>Razão Social:</label>
+            <InputText @bind-Value="lead.RazaoSocial" class="form-input" />
+            <ValidationMessage For="@(() => lead.RazaoSocial)" />
+        </div>
+
+        <div class="form-group">
+            <label>CEP:</label>
+            <div style="display: flex; gap: 5px;">
+                <InputText @bind-Value="lead.Cep" class="form-input cep-input" maxlength="8" />
+                <button type="button" class="btn pesquisar" @onclick="BuscarCep">🔍 Pesquisar</button>
+            </div>
+            <ValidationMessage For="@(() => lead.Cep)" />
+        </div>
+
+        <div class="form-group">
+            <label>Endereço:</label>
+            <InputText @bind-Value="lead.Endereco" class="form-input" disabled="@enderecoPreenchido" />
+            <ValidationMessage For="@(() => lead.Endereco)" />
+        </div>
+
+        <div class="form-group">
+            <label>Número:</label>
+            <InputText @bind-Value="lead.Numero" class="form-input pequeno" />
+            <ValidationMessage For="@(() => lead.Numero)" />
+        </div>
+
+        <div class="form-group">
+            <label>Complemento:</label>
+            <InputText @bind-Value="lead.Complemento" class="form-input" />
+        </div>
+
+        <div class="form-group">
+            <label>Bairro:</label>
+            <InputText @bind-Value="lead.Bairro" class="form-input" disabled="@enderecoPreenchido" />
+            <ValidationMessage For="@(() => lead.Bairro)" />
+        </div>
+
+        <div class="form-group">
+            <label>Cidade:</label>
+            <InputText @bind-Value="lead.Cidade" class="form-input" disabled="@enderecoPreenchido" />
+            <ValidationMessage For="@(() => lead.Cidade)" />
+        </div>
+
+        <div class="form-group">
+            <label>Estado:</label>
+            <InputText @bind-Value="lead.Estado" class="form-input pequeno" disabled="@enderecoPreenchido" />
+            <ValidationMessage For="@(() => lead.Estado)" />
+        </div>
+    </div>
+
+    <div class="botao-container">
+        <button type="submit" class="btn salvar">Salvar</button>
+        <button type="button" class="btn cancelar" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private LeadDto lead = new();
+    private bool enderecoPreenchido = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id.HasValue)
+        {
+            lead = await LeadService.GetLead(Id.Value) ?? new LeadDto();
+        }
+    }
+
+    private async Task BuscarCep()
+    {
+        if (string.IsNullOrWhiteSpace(lead.Cep) || lead.Cep.Length != 8)
+        {
+            await js.InvokeVoidAsync("alert", "CEP inválido! Informe um CEP com 8 dígitos.");
+            return;
+        }
+
+        try
+        {
+            var endereco = await Http.GetFromJsonAsync<Endereco>($"https://viacep.com.br/ws/{lead.Cep}/json/");
+
+            if (endereco != null && !string.IsNullOrWhiteSpace(endereco.Cep))
+            {
+                lead.Endereco = endereco.Logradouro;
+                lead.Bairro = endereco.Bairro;
+                lead.Cidade = endereco.Localidade;
+                lead.Estado = endereco.Uf;
+                enderecoPreenchido = true;
+            }
+            else
+            {
+                enderecoPreenchido = false;
+                await js.InvokeVoidAsync("alert", "CEP não encontrado. Preencha os dados manualmente.");
+            }
+        }
+        catch
+        {
+            enderecoPreenchido = false;
+            await js.InvokeVoidAsync("alert", "Erro ao buscar o CEP. Verifique sua conexão e tente novamente.");
+        }
+    }
+
+    private async Task SalvarLead()
+    {
+        if (Id.HasValue)
+        {
+            await LeadService.UpdateLead(lead);
+        }
+        else
+        {
+            await LeadService.CreateLead(lead);
+        }
+        Navigation.NavigateTo("/leads");
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/leads");
+    }
+}

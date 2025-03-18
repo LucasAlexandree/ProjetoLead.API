@@ -1,0 +1,59 @@
+﻿@page "/leads"
+@inject LeadService LeadService
+@inject NavigationManager Navigation
+
+<h2 class="titulo">Cadastro Leads (Lista)</h2>
+
+<button class="btn novo-lead" @onclick='() => Navigation.NavigateTo("/lead")'>+ Novo Lead</button>
+
+
+@if (leads == null)
+{
+    <p>Carregando...</p>
+}
+else if (!leads.Any())
+{
+    <p>Nenhum lead cadastrado.</p>
+}
+else
+{
+    <table class="tabela">
+        <thead>
+            <tr>
+                <th>CNPJ</th>
+                <th>Razão Social</th>
+                <th>CEP</th>
+                <th>Estado</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var lead in leads)
+            {
+                <tr>
+                    <td>@lead.Cnpj</td>
+                    <td>@lead.RazaoSocial</td>
+                    <td>@lead.Cep</td>
+                    <td>@lead.Estado</td>
+                    <td class="acoes">
+                          <button class="btn incluir" @onclick='() => Navigation.NavigateTo($"/lead/{lead.Id}")'>Incluir</button>
+                          <button class="btn alterar" @onclick='() => Navigation.NavigateTo($"/lead/{lead.Id}")'>Alterar</button>
+                          <button class="btn consultar" @onclick='() => Navigation.NavigateTo($"/lead/{lead.Id}")'>Consultar</button>
+                          <button class="btn excluir" @onclick='() => Navigation.NavigateTo($"/lead/delete/{lead.Id}")'>Excluir</button>
+
+
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<LeadDto> leads = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        leads = await LeadService.GetLeads();
+    }
+}
